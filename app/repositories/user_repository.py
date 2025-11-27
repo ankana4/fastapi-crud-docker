@@ -2,6 +2,7 @@ from bson import ObjectId
 from app.db.mongodb import mongodb
 from app.models.user_model import user_doc
 from datetime import datetime
+from app.signals.event_signals import user_created, user_updated, user_deleted
 
 class UserRepository:
     
@@ -10,6 +11,8 @@ class UserRepository:
         doc = user_doc(data.username, data.email)
         result = await mongodb.db.users.insert_one(doc)
         doc["id"] = str(result.inserted_id)
+        
+        await user_created.send(user=doc)
         return doc
     
     @staticmethod
@@ -32,7 +35,7 @@ class UserRepository:
     async def update_user(user_id: str, data):
         update_data = {k: v for k, v in data.dict().items() if v is not None}
         update_data["updated_at"] = datetime.utcnow()
-        
+        print("Data is ", data)
         result = await mongodb.db.users.update_one(
             {"_id": ObjectId(user_id)},
             {"$set": update_data}
@@ -40,9 +43,19 @@ class UserRepository:
         
         if result.modified_count == 0:
             return None
-        return await UserRepository.get_user(user_id)
-    
+        
+        updated_user = await UserRepository.get_user(user_id)
+        await user_updated.send(user_id=user_id, user=data.username, changes=update_data)
+        return updated_user
+        
     @staticmethod
     async def delete_user(user_id: str):
+        user = await mongodb.db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return False
+        username = await mongodb.db.users.find_one({"username": user["username"]})
         result = await mongodb.db.users.delete_one({"_id": ObjectId(user_id)})
+        if result.deleted_count:
+            await user_deleted.send(user_id=user_id, username=username)
+            
         return result.deleted_count > 0 

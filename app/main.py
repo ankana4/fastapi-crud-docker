@@ -8,6 +8,7 @@ app.include_router(user_router)
 
 @app.on_event("startup")
 async def startup():
+    import app.signals.listeners
     await connect_to_mongo()
     
 @app.on_event("shutdown")
