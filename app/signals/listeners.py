@@ -13,7 +13,14 @@ async def send_welcome_email(user):
     )
     print(f"[SIGNAL] Sending welcome email to {user['email']}")
     
-async def log_update(user, changes):
+async def log_update(user, user_id, changes):
+    old_username = user["username"]
+    
+    await send_email(
+        to_email=user["email"],
+        subject="Update your data",
+        body=f"Hi {old_username}, Your user data has been updated."
+    )
     print(f"[SIGNAL] {user} updated with {changes}")
     
 async def log_delete(username, user_id):

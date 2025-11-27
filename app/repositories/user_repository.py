@@ -35,7 +35,7 @@ class UserRepository:
     async def update_user(user_id: str, data):
         update_data = {k: v for k, v in data.dict().items() if v is not None}
         update_data["updated_at"] = datetime.utcnow()
-        print("Data is ", data)
+        old_user = await UserRepository.get_user(user_id)
         result = await mongodb.db.users.update_one(
             {"_id": ObjectId(user_id)},
             {"$set": update_data}
@@ -45,7 +45,7 @@ class UserRepository:
             return None
         
         updated_user = await UserRepository.get_user(user_id)
-        await user_updated.send(user_id=user_id, user=data.username, changes=update_data)
+        await user_updated.send(user_id=user_id, user=old_user, changes=update_data)
         return updated_user
         
     @staticmethod
